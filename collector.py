@@ -7,36 +7,13 @@ import coloredlogs
 import logging
 import os
 
-start_time = time.time()
 
-# First we read in the environement variables telling us a XMS IP address,
-# username, password and where we want to send the information to (API endpoint)
-
-try:
-    xms_ip          = os.environ['XMS_IP']
-    xio_name        = os.getenv("XIO_NAME", "")
-    username        = os.environ['USERNAME']
-    password        = os.environ['PASSWORD']
-    target_api_url  = os.environ['TARGET_API_URL']
-    log_level       = os.getenv("LOG_LEVEL", "INFO")
-    cert            = os.getenv("VERIFY_CERT", "/etc/ssl/certs/ca-certificates.crt")
-    if cert == "False":
-        cert = False
-except:
-    print("invalid environmental variables passed")
-    sys.exit(1)
-
-# Setup the logger as alfred
-alfred = logging.getLogger("Xtremio_Collector")
-coloredlogs.install(level=log_level, logger=alfred)
-alfred.info("Begining Xtremio_Collector script")
-
-def get_cluster(ip_address, username, password):
+def get_cluster(ip_address, user, password):
     """Method retrieve all pertinent data about the XtremIO cluster
 
     Args:
         ip_address: Ip address of the XMS
-        username: Username to authenticate with XMS
+        user: Username to authenticate with XMS
         password: Password to authenticate with XMS
 
     Returns:
@@ -45,10 +22,12 @@ def get_cluster(ip_address, username, password):
     url="https://{0}/api/json/v2/types/clusters/1".format(ip_address)
     alfred.debug("Making a GET request to: {0}".format(url))
     try:
-        resp=requests.get(url, auth=(username, password), verify=False).json()
+        resp=requests.get(url, auth=(user, password), verify=False).json()
     except:
         alfred.error("Failed to make api call to {0}".format(url))
         sys.exit(1)
+
+    alfred.debug("{0}:{1}".format(user,password))
 
     return resp['content']
 
@@ -104,8 +83,32 @@ def send_to_target_api(payload, verify_cert):
 
 def main():
 
+    start_time = time.time()
+
+    # First we read in the environement variables telling us a XMS IP address,
+    # user, password and where we want to send the information to (API endpoint)
+
+    try:
+        xms_ip          = os.environ['XMS_IP']
+        xio_name        = os.getenv("XIO_NAME", "")
+        user            = os.environ['USER']
+        password        = os.environ['PASSWORD']
+        target_api_url  = os.environ['TARGET_API_URL']
+        log_level       = os.getenv("LOG_LEVEL", "INFO")
+        cert            = os.getenv("VERIFY_CERT", "/etc/ssl/certs/ca-certificates.crt")
+        if cert == "False":
+            cert = False
+    except:
+        print("invalid environmental variables passed")
+        sys.exit(1)
+
+    # Setup the logger as alfred
+    alfred = logging.getLogger("Xtremio_Collector")
+    coloredlogs.install(level=log_level, logger=alfred)
+    alfred.info("Begining Xtremio_Collector script")
+
     xtremio = get_cluster(xms_ip,
-                          username,
+                          user,
                           password)
 
     capacities = calc_capacity(xtremio["ud-ssd-space"],
